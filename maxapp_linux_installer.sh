@@ -21,17 +21,62 @@
 ##############################
 # Global vars
 
-URL="http://www.max-portal.elv.de:8181/downloadELV/MAXApp_ELV.dmg"
+URL=""
 MAX_INST_DIR="/opt/MAX_APP"
 MAX_DESKTOP_FILE="/usr/share/applications/max-app.desktop"
 TEMPDIR="/tmp/maxapp_installer"
 MOUNTPOINT="/${TEMPDIR}/max_img_$$"
+BASE_SYSTEM=""
 
 ##############################
 # Functions
 
+define_app_url() {
+	echo "Please define from where you want to download the Application."
+	echo "It differs dependent on the shop you purchased the Cube and is "
+	echo "given in the short manual."
+	echo
+	echo "Enter either \"elv\" for the ELV version (from www.max-portal.elv.de)"
+	echo "of the app or \"eq-3\" for the eq-3 version (from max.eq-3.de)."
+	read -r	 response
+	if [ "$response" = "elv" ]; then
+		URL="http://www.max-portal.elv.de:8181/downloadELV/MAXApp_ELV.dmg"
+		echo "Using http://www.max-portal.elv.de:8181/downloadELV/MAXApp_ELV.dmg"
+	elif [ "$response" = "eq-3" ]; then
+		URL="http://max.eq-3.de:8181/downloadEQ3/MAXApp_eQ3.dmg"
+		echo "Using http://max.eq-3.de:8181/downloadEQ3/MAXApp_eQ3.dmg"
+	else
+		echo "No valid input. Exit setup. Please start again."
+		exit 1
+	fi
+	
+}
+
+check_base_system() {
+	if [ -f /etc/debian_version ]; then
+		echo "This is a debian based distribution."
+		BASE_SYSTEM="debian"
+	elif [ -f /etc/redhat-release ]; then
+		echo "This is a redhat based distribution."
+		BASE_SYSTEM="redhat"
+	else
+		echo "This is something else."
+		echo "This script is (most probably) not working with your distribution."
+		exit 1
+	fi
+}
+
 check_program() {
-	if ! dpkg-query -W "$1" > /dev/null 2>&1; then
+	if [ "$BASE_SYSTEM" = "debian" ]; then
+		dpkg-query -W "$1" > /dev/null 2>&1
+		installed="$?"
+	elif [ "$BASE_SYSTEM" = "redhat" ]; then
+		rpm -q "$1" > /dev/null 2>&1
+		installed="$?"
+	else
+		exit 1
+	fi
+	if  [ "$installed" -ne 0 ]; then
 		echo
 		echo "Dependency \"$1\" is missing." 
 		echo "Should I try to install it? [y/N]"
@@ -39,34 +84,46 @@ check_program() {
 		case $response in 
 		[yY][eE][sS]|[yY]) 
 			echo "Installing \"$1\"..."
-	        	sudo apt-get install "$1" || exit 1
-	        	;;
-	    	*)
+			if [ "$BASE_SYSTEM" = "debian" ]; then
+				sudo apt-get install "$1" || exit 1
+			elif [ "$BASE_SYSTEM" = "redhat" ]; then
+				sudo dnf install "$1" || exit 1
+			else
+				exit 1
+			fi
+			;;
+		*)
 			echo "Dependencies not fulfilled."
 			echo "Leaving..."
-	        	exit 1
-	        	;;
+			exit 1
+			;;
 		esac
 	fi
 }
 
 usage() {
 	echo "Usage:"
-	echo "	$(basename $0) {--install|--remove}"
+	echo "$(basename $0) {--install|--remove}"
 	echo
-	echo "	--install\tThis will install the MAX! software under ${MAX_INST_DIR}"
-	echo "	         \tand creates a max.desktop entry under ${MAX_DESKTOP_FILE}"
+	echo "--install  This will install the MAX! software under ${MAX_INST_DIR}"
+	echo "           and creates a max.desktop entry under ${MAX_DESKTOP_FILE}"
 	echo
-	echo "	--remove \tUninstalls the software and the max.desktop file"
+	echo "--remove   Uninstalls the software and the max.desktop file"
 }
 
 dependency_checks() {
 	check_program wget
 	check_program sudo
 	check_program dmg2img
-	check_program hfsplus
-	check_program icnsutils
-	check_program default-jre
+	if [ "$BASE_SYSTEM" = "debian" ]; then
+		check_program hfsplus
+		check_program icnsutils
+		check_program default-jre
+	elif [ "$BASE_SYSTEM" = "redhat" ]; then
+		check_program hfsplus-tools
+		check_program libicns-utils
+		check_program java-1.8.0-openjdk
+	fi
 }
 	
 install_maxapp() {
@@ -140,6 +197,8 @@ if [ -z "$1" ]; then
 	exit 1
 fi
 
+define_app_url
+check_base_system
 dependency_checks
 
 if [ "$1" = "--install" ]; then

@@ -4,8 +4,8 @@ Linux installer for the Max! Java software
 maxapp_linux_installer is a simple shell script to install/remove the original
 Max! software for the Max! Cube system.
 
-The script offers an automatic install/remove of the software for debian based
-linux flavors (tested with Ubuntu 16.04 and Debian Jessie).
+The script offers an automatic install/remove of the software for debian and redhat based
+linux flavors (tested with Ubuntu 16.04, Debian Jessie and Fedora 27).
 
 The installer will check for missing dependencies and tries to install them. 
 It needs sudo rights to do that.
