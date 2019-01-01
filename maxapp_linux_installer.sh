@@ -59,6 +59,9 @@ check_base_system() {
 	elif [ -f /etc/redhat-release ]; then
 		echo "This is a redhat based distribution."
 		BASE_SYSTEM="redhat"
+	elif [ -f /etc/arch-release ]; then
+		echo "This is a arch linux based distribution."
+		BASE_SYSTEM="arch"
 	else
 		echo "This is something else."
 		echo "This script is (most probably) not working with your distribution."
@@ -72,6 +75,9 @@ check_program() {
 		installed="$?"
 	elif [ "$BASE_SYSTEM" = "redhat" ]; then
 		rpm -q "$1" > /dev/null 2>&1
+		installed="$?"
+	elif [ "$BASE_SYSTEM" = "arch" ]; then
+		command -v "$1" > /dev/null 2>&1
 		installed="$?"
 	else
 		exit 1
@@ -88,6 +94,8 @@ check_program() {
 				sudo apt-get install "$1" || exit 1
 			elif [ "$BASE_SYSTEM" = "redhat" ]; then
 				sudo dnf install "$1" || exit 1
+			elif [ "$BASE_SYSTEM" = "arch" ]; then
+				sudo pacman -S "$1" || exit 1
 			else
 				exit 1
 			fi
